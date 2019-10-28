@@ -40,7 +40,7 @@
 - [x] [第十八章 字符串](docs/book/18-Strings.md)
 - [ ] [第十九章 类型信息](docs/book/19-Type-Information.md) 
 - [ ] [第二十章 泛型](docs/book/20-Generics.md)
-- [ ] [第二十一章 数组](docs/book/21-Arrays.md)
+- [x] [第二十一章 数组](docs/book/21-Arrays.md)
 - [x] [第二十二章 枚举](docs/book/22-Enumerations.md)
 - [x] [第二十三章 注解](docs/book/23-Annotations.md)
 - [ ] [第二十四章 并发编程](docs/book/24-Concurrent-Programming.md)
@@ -65,7 +65,7 @@
 
 ## 一起交流
 
-交流群：721698221 <a target="_blank" href="//shang.qq.com/wpa/qunwpa?idkey=4cb8bdc26879e544a0e1c2027305afef699029d5c0f314099a239b7c4f309c5f"><img border="0" src="https://raw.githubusercontent.com/LingCoder/OnJava8/master/docs/images/qqgroup.png" alt="OnJava8翻译交流" title="OnJava8翻译交流"></a>( 点击图标即可加入 )<br>
+交流群：721698221 <a target="_blank" href="//shang.qq.com/wpa/qunwpa?idkey=4cb8bdc26879e544a0e1c2027305afef699029d5c0f314099a239b7c4f309c5f"><img border="0" src="https://raw.githubusercontent.com/LingCoder/OnJava8/master/docs/images/qqgroup.png" alt="OnJava8翻译交流" title="OnJava8翻译交流"></a>( 点击图标即可加入 )<br> 加群时请简单备注下来源或说明
 
 <div align="left">
 <img src="https://raw.githubusercontent.com/LingCoder/OnJava8/master/assets/QQGroupQRCode.png"  alt="QQGroupQRCode"/>

@@ -255,7 +255,7 @@ Canonical name : typeinfo.toys.Toy
 
 另外，你还可以调用 `getSuperclass()` 方法来得到父类的 `Class` 对象，再用父类的 `Class` 对象调用该方法，重复多次，你就可以得到一个对象完整的类继承结构。
 
-`Class` 对象的 `newInstance()` 方法是实现“虚拟构造器”的一种途径，虚拟构造器可以让你在不知道一个类的确切类型的时候，创建这个类的对象。在前面的例子中，`up` 只是一个 `Class` 对象的引用，在编译期并不知道这个引用会指向哪个类的 `Class` 对象。当你创建新实例时，会得到一个 `Object` 引用，但是这个引用指向的是 `Toy` 对象。当然，由于得到的是 `Object` 引用，目前你只能给它发送 `Object` 对象能够接受的调用。而如果你想请求具体对象才有的调用，你就得先获取该对象更多的类型信息，并执行某种转型。另外，使用 `newInstance()` 来创建的类，必须带有无参数的构造书。在本章稍后部分，你将会看到如何通过 Java 的反射 API，用任意的构造器来动态的创建类的对象。
+`Class` 对象的 `newInstance()` 方法是实现“虚拟构造器”的一种途径，虚拟构造器可以让你在不知道一个类的确切类型的时候，创建这个类的对象。在前面的例子中，`up` 只是一个 `Class` 对象的引用，在编译期并不知道这个引用会指向哪个类的 `Class` 对象。当你创建新实例时，会得到一个 `Object` 引用，但是这个引用指向的是 `Toy` 对象。当然，由于得到的是 `Object` 引用，目前你只能给它发送 `Object` 对象能够接受的调用。而如果你想请求具体对象才有的调用，你就得先获取该对象更多的类型信息，并执行某种转型。另外，使用 `newInstance()` 来创建的类，必须带有无参数的构造器在本章稍后部分，你将会看到如何通过 Java 的反射 API，用任意的构造器来动态的创建类的对象。
 
 ### 类字面常量
 
@@ -1405,6 +1405,203 @@ java ShowMethods ShowMethods
 <!-- Dynamic Proxies -->
 ## 动态代理
 
+*代理*是基本的设计模式之一。它是你插入的对象，代替“真实”对象以提供其他或不同的操作---这些操作通常涉及到与“真实”对象的通信，因此代理通常充当中间对象。这是一个简单的示例，显示代理的结构：
+
+```java
+// typeinfo/SimpleProxyDemo.java
+
+interface Interface {
+  void doSomething();
+  void somethingElse(String arg);
+}
+
+class RealObject implements Interface {
+  @Override
+  public void doSomething() {
+    System.out.println("doSomething");
+  }
+  @Override
+  public void somethingElse(String arg) {
+    System.out.println("somethingElse " + arg);
+  }
+}
+
+class SimpleProxy implements Interface {
+  private Interface proxied;
+  SimpleProxy(Interface proxied) {
+    this.proxied = proxied;
+  }
+  @Override
+  public void doSomething() {
+    System.out.println("SimpleProxy doSomething");
+    proxied.doSomething();
+  }
+  @Override
+  public void somethingElse(String arg) {
+    System.out.println(
+      "SimpleProxy somethingElse " + arg);
+    proxied.somethingElse(arg);
+  }
+}
+
+class SimpleProxyDemo {
+  public static void consumer(Interface iface) {
+    iface.doSomething();
+    iface.somethingElse("bonobo");
+  }
+  public static void main(String[] args) {
+    consumer(new RealObject());
+    consumer(new SimpleProxy(new RealObject()));
+  }
+}
+/* Output:
+doSomething
+somethingElse bonobo
+SimpleProxy doSomething
+doSomething
+SimpleProxy somethingElse bonobo
+somethingElse bonobo
+*/
+```
+
+因为`consumer()`接受`Interface`，所以它不知道获得的是`RealObject`还是`SimpleProxy`，因为两者都实现了`Interface`。
+但是，在客户端和`RealObject`之间插入的`SimpleProxy`执行操作，然后在`RealObject`上调用相同的方法。
+
+当你希望将额外的操作与“真实对象”做分离时，代理可能会有所帮助，尤其是当你想要轻松地启用额外的操作时，反之亦然（设计模式就是封装变更---所以你必须改变一些东西以证明模式的合理性）。例如，如果你想跟踪对`RealObject`中方法的调用，或衡量此类调用的开销，该怎么办？这不是你要写入到程序中的代码，而且代理使你可以很轻松地添加或删除它。
+
+Java的*动态代理*更进一步，不仅动态创建代理对象而且动态处理对代理方法的调用。在动态代理上进行的所有调用都被重定向到单个*调用处理程序*，该处理程序负责发现调用的内容并决定如何处理。这是`SimpleProxyDemo.java`使用动态代理重写的例子：
+
+```java
+// typeinfo/SimpleDynamicProxy.java
+import java.lang.reflect.*;
+
+class DynamicProxyHandler implements InvocationHandler {
+  private Object proxied;
+  DynamicProxyHandler(Object proxied) {
+    this.proxied = proxied;
+  }
+  @Override
+  public Object
+  invoke(Object proxy, Method method, Object[] args)
+  throws Throwable {
+    System.out.println(
+      "**** proxy: " + proxy.getClass() +
+      ", method: " + method + ", args: " + args);
+    if(args != null)
+      for(Object arg : args)
+        System.out.println("  " + arg);
+    return method.invoke(proxied, args);
+  }
+}
+
+class SimpleDynamicProxy {
+  public static void consumer(Interface iface) {
+    iface.doSomething();
+    iface.somethingElse("bonobo");
+  }
+  public static void main(String[] args) {
+    RealObject real = new RealObject();
+    consumer(real);
+    // Insert a proxy and call again:
+    Interface proxy = (Interface)Proxy.newProxyInstance(
+      Interface.class.getClassLoader(),
+      new Class[]{ Interface.class },
+      new DynamicProxyHandler(real));
+    consumer(proxy);
+  }
+}
+/* Output:
+doSomething
+somethingElse bonobo
+**** proxy: class $Proxy0, method: public abstract void
+Interface.doSomething(), args: null
+doSomething
+**** proxy: class $Proxy0, method: public abstract void
+Interface.somethingElse(java.lang.String), args:
+[Ljava.lang.Object;@6bc7c054
+  bonobo
+somethingElse bonobo
+*/
+```
+
+可以通过调用静态方法`Proxy.newProxyInstance()`来创建动态代理，该方法需要一个类加载器（通常可以从已加载的对象中获取），希望代理实现的接口列表（不是类或抽象类），以及接口`InvocationHandler`的一个实现。动态代理会将所有调用重定向到调用处理程序，因此通常为调用处理程序的构造函数提供对“真实”对象的引用，以便一旦执行中介任务便可以转发请求。
+
+`invoke()`方法被传递给代理对象，以防万一你必须区分请求的来源---但是在很多情况下都无需关心。但是，在`invoke()`内的代理上调用方法时要小心，因为通过接口的调用是通过代理重定向的。
+
+通常执行代理操作，然后使用`Method.invoke()`传递必要的参数将请求转发给代理对象。这在一开始看起来是有限制的，好像你只能执行一般的操作。但是，可以过滤某些方法调用，同时传递其他方法调用:
+
+```java
+// typeinfo/SelectingMethods.java
+// Looking for particular methods in a dynamic proxy
+import java.lang.reflect.*;
+
+class MethodSelector implements InvocationHandler {
+  private Object proxied;
+  MethodSelector(Object proxied) {
+    this.proxied = proxied;
+  }
+  @Override
+  public Object
+  invoke(Object proxy, Method method, Object[] args)
+  throws Throwable {
+    if(method.getName().equals("interesting"))
+      System.out.println(
+        "Proxy detected the interesting method");
+    return method.invoke(proxied, args);
+  }
+}
+
+interface SomeMethods {
+  void boring1();
+  void boring2();
+  void interesting(String arg);
+  void boring3();
+}
+
+class Implementation implements SomeMethods {
+  @Override
+  public void boring1() {
+    System.out.println("boring1");
+  }
+  @Override
+  public void boring2() {
+    System.out.println("boring2");
+  }
+  @Override
+  public void interesting(String arg) {
+    System.out.println("interesting " + arg);
+  }
+  @Override
+  public void boring3() {
+    System.out.println("boring3");
+  }
+}
+
+class SelectingMethods {
+  public static void main(String[] args) {
+    SomeMethods proxy =
+      (SomeMethods)Proxy.newProxyInstance(
+        SomeMethods.class.getClassLoader(),
+        new Class[]{ Interface.class },
+        new MethodSelector(new Implementation()));
+    proxy.boring1();
+    proxy.boring2();
+    proxy.interesting("bonobo");
+    proxy.boring3();
+  }
+}
+/* Output:
+boring1
+boring2
+Proxy detected the interesting method
+interesting bonobo
+boring3
+*/
+```
+
+在这个示例里，我们只是在寻找方法名，但是你也可以寻找方法签名的其他方面，甚至可以搜索特定的参数值。
+
+动态代理不是你每天都会使用的工具，但是它可以很好地解决某些类型的问题。你可以在Erich Gamma等人的*设计模式*中了解有关*代理*和其他设计模式的更多信息。 （Addison-Wesley，1995年），以及[设计模式](./25-Patterns.md)一章。
 
 <!-- Using Optional -->
 ## Optional类
